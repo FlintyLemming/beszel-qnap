@@ -13,7 +13,7 @@
 - **完整配置管理**：图形化配置所有常用 `beszel-agent` 环境变量（`KEY`、`HUB_URL`、`TOKEN`、`LISTEN`、`FILESYSTEM`、`EXTRA_FILESYSTEMS`、`DOCKER_HOST`、`SMART_DEVICES` 等），并提供自定义环境变量列表以兼容未来新版本。
 - **QNAP 专属优化**：
   - 将 `DATA_DIR` 持久化到 `<QPKG_ROOT>/data/agent-data`（避免 QNAP `/` 内存盘重启丢失指纹）。
-  - 自动探测 QNAP 存储卷（如 `/share/CACHEDEV*_DATA`）、Container Station Docker Socket (`/var/run/docker.sock`)、`hwmon` 传感器，并在 `x86_64` 包内内置静态编译的 `smartctl`（smartmontools 7.5，启动时自动维护 `/usr/local/sbin/smartctl` 软链接并注入 `PATH`；ARM 架构仍可配合 Entware `smartctl`）。
+  - 自动探测 QNAP 存储卷（如 `/share/CACHEDEV*_DATA`）、Container Station Docker Socket (`/var/run/docker.sock`)、`hwmon` 传感器，并在 CI / Release 构建的 `x86_64`、`arm_64`、`arm-x41` 包内均内置静态编译的 `smartctl`（smartmontools 7.5，启动时自动维护 `/usr/local/sbin/smartctl` 软链接并注入 `PATH`；若本地手动打包未构建 ARM 版 `smartctl`，也可运行 `bash ./scripts/build-smartctl.sh` 或配合 Entware `smartmontools`）。
   - 中英文双语界面切换。
 
 ## 构建 QPKG

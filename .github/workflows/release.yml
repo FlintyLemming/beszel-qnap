@@ -2,8 +2,13 @@ name: Release QPKG
 
 on:
   push:
+    branches:
+      - main
     tags:
       - 'v*'
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       version:
@@ -25,6 +30,29 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+
+      - name: Cache static smartctl binaries
+        id: smartctl-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            assets/smartctl/arm_64/smartctl
+            assets/smartctl/arm-x41/smartctl
+          key: smartctl-7.5-${{ runner.os }}-${{ hashFiles('scripts/build-smartctl.sh') }}
+
+      - name: Install smartmontools cross-build dependencies
+        if: steps.smartctl-cache.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            curl \
+            ca-certificates \
+            g++-aarch64-linux-gnu \
+            g++-arm-linux-gnueabihf
+
+      - name: Build missing static smartctl binaries
+        run: bash ./scripts/build-smartctl.sh
 
       - name: Resolve package version
         id: version
@@ -49,7 +77,11 @@ jobs:
           echo "Resolved QPKG_VER=${VERSION}"
 
       - name: Build and pack QPKG packages
-        run: bash ./scripts/build.sh
+        run: |
+          bash ./scripts/build.sh
+          for arch in x86_64 arm_64 arm-x41; do
+            test -x "qpkg/${arch}/bin/smartctl"
+          done
 
       - name: Generate SHA256 checksums
         working-directory: dist

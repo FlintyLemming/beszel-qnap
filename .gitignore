@@ -4,3 +4,7 @@ qpkg/arm_64/
 qpkg/arm-x41/
 qpkg/build/
 dist/
+
+# Built on demand in CI by scripts/build-smartctl.sh
+assets/smartctl/arm_64/
+assets/smartctl/arm-x41/
