@@ -28,11 +28,12 @@
 
 ## 安装与测试
 
-1. **QTS 4.5 – 5.x**：在 QTS **App Center** 手动安装对应架构的 `.qpkg`（若开启了代码签名限制，需在 App Center 设置中勾选允许安装无有效数字签名的应用程序，或通过 SSH 执行 `qpkg_cli -m <file>.qpkg -A`）。
-   **QTS 6.1+**：由于新版本强制要求 QNAP 官方签名且无 `QDK` 签名区会导致 `App Center` 与 `qpkg_cli -m ... -A` 均被拦截，请通过 SSH 以 root 直接执行安装：
-   ```sh
-   sudo sh BeszelAgent_1.0.0_x86_64.qpkg
-   ```
+1. **安装 QPKG（支持 QTS 4.5 – 6.1+，已在 QTS 6.1 实测通过）**：
+   - 在 QTS **App Center** 手动安装对应架构的 `.qpkg`（若开启了代码签名限制，需在 App Center 设置中勾选允许安装无有效数字签名的应用程序）。
+   - 如需通过 SSH 安装（或环境开启了严格签名校验），可执行 `qpkg_cli -m <file>.qpkg -A` 或以 root 直接运行安装包：
+     ```sh
+     sudo sh BeszelAgent_1.0.0_x86_64.qpkg
+     ```
 2. 在 QTS 桌面点击 **Beszel Agent** 图标打开管理界面。
 3. 在 **二进制与更新** 页在线下载最新版或手动上传 `beszel-agent` 二进制。
 4. 在 **配置信息** 页填写 `KEY`（或 `HUB_URL` + `TOKEN`）及可选存储卷 `FILESYSTEM`（如需采集 SATA 硬盘 SMART，建议设置 `SMART_DEVICES` 如 `/dev/sda:sat,/dev/sdb:sat,/dev/nvme0`），点击 **保存并重启 Agent**。
