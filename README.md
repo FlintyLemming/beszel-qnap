@@ -26,6 +26,21 @@
 
 构建产物输出在 `dist\` 目录（包含 `x86_64`、`arm_64`、`arm-x41` 架构包）。
 
+### 架构包对照表
+
+| QPKG 文件后缀 | 适用架构 / 平台 | 常见 QNAP 机型示例 |
+| --- | --- | --- |
+| `x86_64` | Intel / AMD 64 位（`x86_64`） | TS-x51 / TS-x53 / TS-x64 / TS-x73 / TVS / QuTS hero x86 等 |
+| `arm_64` | ARM 64 位（`aarch64`） | TS-x33 / TS-x28A / TS-x32X / TS-x35A 等 |
+| `arm-x41` | ARM 32 位 Annapurna Labs（`armv7l`、`Platform = ARM_AL`） | **TS-x31P / TS-x31P2 / TS-x31P3 / TS-x31X / TS-x31+ / TS-x41** 等 |
+
+> [!TIP]
+> 不确定机型对应哪个包时，可在 NAS SSH 中执行以下命令查看：
+> ```sh
+> uname -m && getcfg "" Platform -f /etc/platform.conf
+> ```
+> 其中 `armv7l` + `ARM_AL`（例如 **TS-231P**）在 QNAP 官方体系中归属 **`arm-x41`**（而非早期的 Mindspeed `arm-x31` / `ARM_MS`）。
+
 ## 安装与测试
 
 1. **安装 QPKG（支持 QTS 4.5 – 6.1+，已在 QTS 6.1 实测通过）**：
