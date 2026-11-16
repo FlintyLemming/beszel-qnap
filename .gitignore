@@ -1,0 +1,6 @@
+# Compiled binaries inside QPKG arch staging dirs
+qpkg/x86_64/
+qpkg/arm_64/
+qpkg/arm-x41/
+qpkg/build/
+dist/

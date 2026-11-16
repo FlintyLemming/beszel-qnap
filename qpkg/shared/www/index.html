@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Beszel Agent Manager</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-logo" aria-hidden="true">
+          <svg viewBox="0 0 32 32" width="26" height="26" fill="none">
+            <rect x="2" y="2" width="28" height="28" rx="8" fill="#0ea5e9"/>
+            <path d="M9 17.5L13.5 13L17 16.5L23 10.5" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M9 22.5H23" stroke="#bae6fd" stroke-width="2.2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div>
+          <div class="brand-title">Beszel Agent <span class="badge-subtle">QNAP Runtime</span></div>
+          <div class="brand-sub" id="hdr-host-sub">Loading...</div>
+        </div>
+      </div>
+
+      <div class="topbar-actions">
+        <span id="hdr-status-pill" class="pill pill-muted">...</span>
+        <button id="btn-lang" class="btn btn-ghost btn-sm" type="button">EN / 中文</button>
+      </div>
+    </header>
+
+    <div id="auth-banner" class="alert alert-danger hidden"></div>
+    <div id="toast-area" class="toast-area"></div>
+
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-tab="overview" data-i18n="tab_overview">概览与状态</button>
+      <button class="tab" data-tab="config" data-i18n="tab_config">配置信息</button>
+      <button class="tab" data-tab="updates" data-i18n="tab_updates">二进制与更新</button>
+      <button class="tab" data-tab="logs" data-i18n="tab_logs">运行日志</button>
+    </nav>
+
+    <main class="content">
+      <!-- OVERVIEW TAB -->
+      <section id="tab-overview" class="tab-panel active">
+        <div id="setup-checklist" class="card card-accent hidden">
+          <div class="card-header">
+            <h2 data-i18n="setup_title">初始化引导</h2>
+          </div>
+          <div class="checklist" id="checklist-items"></div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header">
+              <h2 data-i18n="svc_control">运行状态与控制</h2>
+              <div class="btn-group">
+                <button id="btn-start" class="btn btn-primary btn-sm" type="button" data-i18n="btn_start">启动</button>
+                <button id="btn-restart" class="btn btn-secondary btn-sm" type="button" data-i18n="btn_restart">重启</button>
+                <button id="btn-stop" class="btn btn-danger btn-sm" type="button" data-i18n="btn_stop">停止</button>
+              </div>
+            </div>
+            <div class="kv-grid">
+              <div class="kv"><span class="k" data-i18n="k_state">运行状态</span><span class="v" id="ov-running">-</span></div>
+              <div class="kv"><span class="k" data-i18n="k_pid">进程 PID</span><span class="v mono" id="ov-pid">-</span></div>
+              <div class="kv"><span class="k" data-i18n="k_uptime">运行时长</span><span class="v" id="ov-uptime">-</span></div>
+              <div class="kv"><span class="k" data-i18n="k_mem">内存占用 (RSS)</span><span class="v" id="ov-mem">-</span></div>
+              <div class="kv"><span class="k" data-i18n="k_health">健康检查</span><span class="v" id="ov-health">-</span></div>
+              <div class="kv"><span class="k" data-i18n="k_configured">配置就绪</span><span class="v" id="ov-configured">-</span></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h2 data-i18n="bin_summary">Agent 二进制信息</h2>
+              <button class="btn btn-secondary btn-sm" type="button" data-goto="updates" data-i18n="btn_manage_bin">管理 / 更新</button>
+            </div>
+            <div class="kv-grid">
+              <div class="kv"><span class="k" data-i18n="k_bin_ver">当前版本</span><span class="v mono" id="ov-bin-ver">-</span></div>
+              <div class="kv"><span class="k" data-i18n="k_bin_src">安装来源</span><span class="v" id="ov-bin-src">-</span></div>
+              <div class="kv"><span class="k" data-i18n="k_bin_size">文件大小</span><span class="v" id="ov-bin-size">-</span></div>
+              <div class="kv"><span class="k" data-i18n="k_updated_at">更新时间</span><span class="v" id="ov-updated-at">-</span></div>
+              <div class="kv kv-full"><span class="k">SHA-256</span><span class="v mono small" id="ov-sha256">-</span></div>
+            </div>
+            <div class="fp-box">
+              <div>
+                <span class="k" data-i18n="k_fingerprint">Agent 指纹 (Fingerprint)</span>
+                <div class="mono small" id="ov-fp">-</div>
+              </div>
+              <div class="btn-group">
+                <button id="btn-fp-view" class="btn btn-ghost btn-sm" type="button" data-i18n="btn_refresh">刷新</button>
+                <button id="btn-fp-reset" class="btn btn-secondary btn-sm" type="button" data-i18n="btn_fp_reset">重置指纹</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2 data-i18n="host_diag">QNAP 主机环境探测</h2>
+            <button id="btn-refresh-status" class="btn btn-ghost btn-sm" type="button" data-i18n="btn_refresh">刷新</button>
+          </div>
+          <div class="kv-grid kv-3">
+            <div class="kv"><span class="k" data-i18n="k_nas_model">NAS 型号 / QTS</span><span class="v" id="host-model">-</span></div>
+            <div class="kv"><span class="k" data-i18n="k_arch">CPU 架构</span><span class="v mono" id="host-arch">-</span></div>
+            <div class="kv"><span class="k" data-i18n="k_qpkg_ver">QPKG 运行环境版本</span><span class="v mono" id="host-qpkg">-</span></div>
+            <div class="kv"><span class="k">Docker Socket</span><span class="v mono" id="host-docker">-</span></div>
+            <div class="kv"><span class="k">smartctl</span><span class="v mono" id="host-smartctl">-</span></div>
+            <div class="kv"><span class="k" data-i18n="k_sensors">Hwmon 传感器</span><span class="v mono" id="host-sensors">-</span></div>
+          </div>
+          <div class="volumes-box">
+            <div class="k" data-i18n="k_volumes">检测到的存储卷 (可在配置页一键填入 FILESYSTEM / EXTRA_FILESYSTEMS)</div>
+            <div id="host-volumes" class="chip-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CONFIG TAB -->
+      <section id="tab-config" class="tab-panel">
+        <form id="config-form">
+          <div class="toolbar-sticky">
+            <div class="toolbar-note" data-i18n="cfg_hint">修改配置后可点击“保存并重启”使之立即生效。</div>
+            <div class="btn-group">
+              <button id="btn-cfg-reload" class="btn btn-ghost" type="button" data-i18n="btn_reload">重新加载</button>
+              <button id="btn-cfg-save" class="btn btn-secondary" type="submit" data-i18n="btn_save">仅保存</button>
+              <button id="btn-cfg-save-restart" class="btn btn-primary" type="button" data-i18n="btn_save_restart">保存并重启 Agent</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><h2 data-i18n="cfg_sec_conn">连接与认证</h2></div>
+            <div class="form-grid">
+              <div class="field">
+                <label for="cfg-listen">LISTEN / PORT</label>
+                <input id="cfg-listen" name="listen" type="text" placeholder="45876 or :45876" />
+                <small data-i18n="hint_listen">SSH 监听端口或地址，默认 45876</small>
+              </div>
+              <div class="field">
+                <label for="cfg-system-name">SYSTEM_NAME</label>
+                <input id="cfg-system-name" name="system_name" type="text" placeholder="Optional display hostname" />
+                <small data-i18n="hint_sysname">可选，覆盖上报给 Hub 的系统名称</small>
+              </div>
+              <div class="field field-full">
+                <label for="cfg-key">KEY (SSH Public Key)</label>
+                <textarea id="cfg-key" name="key" rows="3" placeholder="ssh-ed25519 AAAA..."></textarea>
+                <small data-i18n="hint_key">从 Beszel Hub 添加系统时获取的公钥（支持多行多个公钥）</small>
+              </div>
+              <div class="field">
+                <label for="cfg-hub-url">HUB_URL (WebSocket 模式)</label>
+                <input id="cfg-hub-url" name="hub_url" type="text" placeholder="https://beszel.example.com" />
+              </div>
+              <div class="field">
+                <label for="cfg-token">TOKEN (WebSocket 模式)</label>
+                <input id="cfg-token" name="token" type="password" autocomplete="off" placeholder="Optional Hub Token" />
+              </div>
+              <div class="field">
+                <label for="cfg-all-proxy">BESZEL_AGENT_ALL_PROXY</label>
+                <input id="cfg-all-proxy" name="all_proxy" type="text" placeholder="socks5://127.0.0.1:1080" />
+              </div>
+              <div class="field">
+                <label for="cfg-ca-cert">CA_CERT_FILE</label>
+                <input id="cfg-ca-cert" name="ca_cert_file" type="text" placeholder="/path/to/ca.crt" />
+              </div>
+              <div class="field field-full">
+                <label for="cfg-hub-headers">HUB_HEADERS</label>
+                <input id="cfg-hub-headers" name="hub_headers" type="text" placeholder="Header1: val1, Header2: val2" />
+              </div>
+              <div class="field checkbox-field">
+                <label><input id="cfg-disable-ssh" name="disable_ssh" type="checkbox" /> <span data-i18n="lbl_disable_ssh">DISABLE_SSH (仅使用 WebSocket 主动连接 Hub)</span></label>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><h2 data-i18n="cfg_sec_storage">磁盘与文件系统 (QNAP 存储卷)</h2></div>
+            <div id="cfg-volume-suggestions" class="suggestion-bar hidden">
+              <span class="k" data-i18n="quick_fill_vol">快速填入存储卷:</span>
+              <div id="cfg-volume-chips" class="chip-list"></div>
+            </div>
+            <div class="form-grid">
+              <div class="field">
+                <label for="cfg-filesystem">FILESYSTEM (主根挂载点/设备)</label>
+                <input id="cfg-filesystem" name="filesystem" type="text" placeholder="/share/CACHEDEV1_DATA" />
+                <small data-i18n="hint_fs">QNAP 的 / 为内存盘，建议设置为数据卷路径如 /share/CACHEDEV1_DATA</small>
+              </div>
+              <div class="field">
+                <label for="cfg-extra-fs">EXTRA_FILESYSTEMS</label>
+                <input id="cfg-extra-fs" name="extra_filesystems" type="text" placeholder="/share/CACHEDEV2_DATA,/share/MD0_DATA" />
+                <small data-i18n="hint_extra_fs">额外监控的磁盘或挂载点，逗号分隔</small>
+              </div>
+              <div class="field">
+                <label for="cfg-disk-cache">DISK_USAGE_CACHE</label>
+                <input id="cfg-disk-cache" name="disk_usage_cache" type="text" placeholder="e.g. 15m or 1h" />
+                <small data-i18n="hint_disk_cache">磁盘用量缓存时间，避免频繁唤醒休眠硬盘</small>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><h2 data-i18n="cfg_sec_docker">Docker / Container Station</h2></div>
+            <div class="form-grid">
+              <div class="field">
+                <label for="cfg-docker-host">DOCKER_HOST</label>
+                <div class="input-with-btn">
+                  <input id="cfg-docker-host" name="docker_host" type="text" placeholder="unix:///var/run/docker.sock" />
+                  <button id="btn-fill-docker" class="btn btn-ghost btn-sm" type="button" data-i18n="btn_detect">填入默认</button>
+                </div>
+              </div>
+              <div class="field">
+                <label for="cfg-docker-timeout">DOCKER_TIMEOUT</label>
+                <input id="cfg-docker-timeout" name="docker_timeout" type="text" placeholder="e.g. 5s" />
+              </div>
+              <div class="field">
+                <label for="cfg-docker-img-chk">DOCKER_IMAGE_CHECK</label>
+                <select id="cfg-docker-img-chk" name="docker_image_check">
+                  <option value="">Default</option>
+                  <option value="true">true</option>
+                  <option value="false">false</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="cfg-exclude-containers">EXCLUDE_CONTAINERS</label>
+                <input id="cfg-exclude-containers" name="exclude_containers" type="text" placeholder="container1,prefix*" />
+              </div>
+              <div class="field">
+                <label for="cfg-container-label">CONTAINER_NAME_LABEL</label>
+                <input id="cfg-container-label" name="container_name_label" type="text" placeholder="Optional Docker label" />
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><h2 data-i18n="cfg_sec_hw">SMART、温度传感器与 GPU</h2></div>
+            <div class="form-grid">
+              <div class="field">
+                <label for="cfg-smart-devices">SMART_DEVICES</label>
+                <input id="cfg-smart-devices" name="smart_devices" type="text" placeholder="/dev/sda:sat,/dev/sdb:sat,/dev/nvme0" />
+                <small data-i18n="hint_smart_devices">QTS 下 SATA 盘默认识别为 SCSI，建议显式指定 :sat（如 /dev/sda:sat）</small>
+              </div>
+              <div class="field">
+                <label for="cfg-exclude-smart">EXCLUDE_SMART</label>
+                <input id="cfg-exclude-smart" name="exclude_smart" type="text" placeholder="/dev/sdb" />
+              </div>
+              <div class="field">
+                <label for="cfg-smart-interval">SMART_INTERVAL</label>
+                <input id="cfg-smart-interval" name="smart_interval" type="text" placeholder="e.g. 1h" />
+              </div>
+              <div class="field">
+                <label for="cfg-sensors">SENSORS</label>
+                <input id="cfg-sensors" name="sensors" type="text" placeholder="e.g. coretemp*" />
+              </div>
+              <div class="field">
+                <label for="cfg-primary-sensor">PRIMARY_SENSOR</label>
+                <input id="cfg-primary-sensor" name="primary_sensor" type="text" placeholder="e.g. coretemp_package_id_0" />
+              </div>
+              <div class="field">
+                <label for="cfg-fan-sensors">FAN_SENSORS</label>
+                <input id="cfg-fan-sensors" name="fan_sensors" type="text" placeholder="Optional fan filter" />
+              </div>
+              <div class="field">
+                <label for="cfg-sensors-timeout">SENSORS_TIMEOUT</label>
+                <input id="cfg-sensors-timeout" name="sensors_timeout" type="text" placeholder="2s" />
+              </div>
+              <div class="field">
+                <label for="cfg-gpu-collector">GPU_COLLECTOR</label>
+                <input id="cfg-gpu-collector" name="gpu_collector" type="text" placeholder="auto / rocm-smi / ..." />
+              </div>
+              <div class="field checkbox-field">
+                <label><input id="cfg-skip-gpu" name="skip_gpu" type="checkbox" /> <span>SKIP_GPU</span></label>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><h2 data-i18n="cfg_sec_sys">系统、运行时与额外参数</h2></div>
+            <div class="form-grid">
+              <div class="field">
+                <label for="cfg-nics">NICS</label>
+                <input id="cfg-nics" name="nics" type="text" placeholder="eth0,eth1" />
+              </div>
+              <div class="field">
+                <label for="cfg-mem-calc">MEM_CALC</label>
+                <input id="cfg-mem-calc" name="mem_calc" type="text" placeholder="htop / legacy / default" />
+              </div>
+              <div class="field">
+                <label for="cfg-log-level">LOG_LEVEL</label>
+                <select id="cfg-log-level" name="log_level">
+                  <option value="info">info</option>
+                  <option value="debug">debug</option>
+                  <option value="warn">warn</option>
+                  <option value="error">error</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="cfg-extra-args">Extra CLI Flags</label>
+                <input id="cfg-extra-args" name="extra_args" type="text" placeholder="Optional flags passed to beszel-agent" />
+              </div>
+              <div class="field checkbox-field">
+                <label><input id="cfg-auto-start" name="auto_start" type="checkbox" /> <span data-i18n="lbl_auto_start">随 QPKG / NAS 启动自动运行 beszel-agent</span></label>
+              </div>
+              <div class="field checkbox-field">
+                <label><input id="cfg-skip-systemd" name="skip_systemd" type="checkbox" /> <span>SKIP_SYSTEMD (推荐 QNAP 开启)</span></label>
+              </div>
+              <div class="field checkbox-field">
+                <label><input id="cfg-skip-wifi" name="skip_wifi" type="checkbox" /> <span>SKIP_WIFI</span></label>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h2 data-i18n="cfg_sec_custom">自定义环境变量 (兼容未来 Beszel 新版本参数)</h2>
+              <button id="btn-add-env" class="btn btn-secondary btn-sm" type="button" data-i18n="btn_add_env">+ 添加变量</button>
+            </div>
+            <div id="custom-env-list" class="env-list"></div>
+          </div>
+        </form>
+      </section>
+
+      <!-- UPDATES TAB -->
+      <section id="tab-updates" class="tab-panel">
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header">
+              <h2 data-i18n="upd_current">当前二进制状态</h2>
+              <button id="btn-rollback" class="btn btn-secondary btn-sm hidden" type="button" data-i18n="btn_rollback">回滚至上一版本</button>
+            </div>
+            <div class="kv-grid">
+              <div class="kv"><span class="k" data-i18n="k_bin_ver">当前版本</span><span class="v mono" id="up-bin-ver">-</span></div>
+              <div class="kv"><span class="k" data-i18n="k_bin_src">安装来源</span><span class="v" id="up-bin-src">-</span></div>
+              <div class="kv"><span class="k" data-i18n="k_backup">可用备份 (.bak)</span><span class="v mono" id="up-bak-ver">-</span></div>
+              <div class="kv"><span class="k" data-i18n="k_updated_at">更新时间</span><span class="v" id="up-updated-at">-</span></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><h2 data-i18n="upd_manual">手动上传更新</h2></div>
+            <p class="muted small" data-i18n="upd_manual_desc">支持直接上传 GitHub Release 的 .tar.gz / .zip 压缩包或裸 beszel-agent Linux 二进制文件（自动校验架构并备份旧版）。</p>
+            <div id="dropzone" class="dropzone">
+              <input id="file-upload" type="file" accept=".gz,.tgz,.zip,*" />
+              <div id="dropzone-label" data-i18n="drop_hint">点击选择或拖拽文件到此处</div>
+            </div>
+            <div class="upload-actions">
+              <button id="btn-upload" class="btn btn-primary" type="button" disabled data-i18n="btn_upload_install">上传并安装</button>
+              <span id="upload-progress-text" class="muted small"></span>
+            </div>
+            <div id="upload-bar-wrap" class="progress hidden"><div id="upload-bar" class="progress-bar"></div></div>
+          </div>
+        </div>
+
+        <div id="download-job-card" class="card card-accent hidden">
+          <div class="card-header">
+            <h2 data-i18n="job_title">在线下载任务</h2>
+            <span id="job-stage" class="pill pill-info">-</span>
+          </div>
+          <div id="job-message" class="small"></div>
+          <div class="progress"><div id="job-bar" class="progress-bar"></div></div>
+          <div id="job-bytes" class="muted small mono"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2 data-i18n="upd_online">在线下载 / 版本管理 (henrygd/beszel)</h2>
+            <button id="btn-fetch-releases" class="btn btn-primary btn-sm" type="button" data-i18n="btn_fetch_releases">获取可用版本</button>
+          </div>
+
+          <div class="form-grid form-compact">
+            <div class="field">
+              <label for="upd-source" data-i18n="lbl_dl_source">下载源</label>
+              <select id="upd-source">
+                <option value="github">GitHub Official (github.com)</option>
+                <option value="mirror">Beszel Mirror (gh.beszel.dev)</option>
+                <option value="custom" data-i18n="opt_custom_mirror">自定义 GitHub 加速前缀</option>
+              </select>
+            </div>
+            <div class="field" id="upd-custom-prefix-wrap">
+              <label for="upd-custom-prefix" data-i18n="lbl_custom_prefix">自定义加速前缀</label>
+              <input id="upd-custom-prefix" type="text" placeholder="https://ghfast.top/" />
+            </div>
+            <div class="field">
+              <label for="upd-http-proxy">HTTP/HTTPS Proxy</label>
+              <input id="upd-http-proxy" type="text" placeholder="http://127.0.0.1:7890" />
+            </div>
+            <div class="field checkbox-field">
+              <label><input id="upd-prefer-glibc" type="checkbox" /> <span data-i18n="lbl_prefer_glibc">优先下载 glibc 版本 (amd64 NVML GPU 需求)</span></label>
+            </div>
+          </div>
+
+          <div class="custom-url-row">
+            <input id="upd-custom-url" type="text" placeholder="或直接粘贴任意 beszel-agent 下载 URL (.tar.gz / .zip / ELF)" />
+            <button id="btn-download-url" class="btn btn-secondary" type="button" data-i18n="btn_dl_url">从此 URL 下载安装</button>
+          </div>
+
+          <div id="releases-list" class="release-list">
+            <div class="muted small" data-i18n="releases_empty">点击“获取可用版本”加载上游 henrygd/beszel 发布列表。</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- LOGS TAB -->
+      <section id="tab-logs" class="tab-panel">
+        <div class="card">
+          <div class="card-header">
+            <div class="btn-group">
+              <button class="btn btn-secondary btn-sm log-kind active" data-kind="agent" type="button">beszel-agent.log</button>
+              <button class="btn btn-ghost btn-sm log-kind" data-kind="manager" type="button">manager.log</button>
+            </div>
+            <div class="btn-group">
+              <select id="log-lines" class="select-sm">
+                <option value="100">100 lines</option>
+                <option value="200" selected>200 lines</option>
+                <option value="500">500 lines</option>
+              </select>
+              <label class="inline-check"><input id="log-autorefresh" type="checkbox" /> <span data-i18n="lbl_auto_refresh">自动刷新</span></label>
+              <button id="btn-log-refresh" class="btn btn-ghost btn-sm" type="button" data-i18n="btn_refresh">刷新</button>
+              <button id="btn-log-clear" class="btn btn-danger btn-sm" type="button" data-i18n="btn_clear">清空</button>
+            </div>
+          </div>
+          <pre id="log-viewer" class="log-viewer">Loading...</pre>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

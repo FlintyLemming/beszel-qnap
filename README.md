@@ -1,0 +1,36 @@
+# Beszel Agent for QNAP QTS (`BeszelAgent`)
+
+一个与具体 Beszel 版本解耦的 QNAP QTS 运行环境与 Web 管理套件，参考上游 [`henrygd/beszel`](https://github.com/henrygd/beszel)。
+
+## 特性
+
+- **不绑定 Beszel 版本**：QPKG 仅提供运行环境、进程生命周期管理与 Web 管理界面，不内置硬编码版本的 `beszel-agent`。
+- **QTS 桌面原生集成**：通过 `/cgi-bin/qpkg/BeszelAgent/` 嵌入 QTS 桌面，跟随 QTS 管理员会话 (`NAS_SID`) 校验权限，无需额外开放管理端口。
+- **在线下载与多源更新**：支持从 GitHub 官方 Releases、`gh.beszel.dev` 镜像、自定义 GitHub 代理前缀或任意直链下载任意版本 `beszel-agent`，自动校验架构与 SHA-256。
+- **手动上传与回滚**：支持在网页端直接上传 `.tar.gz`、`.zip` 或裸 `beszel-agent` Linux ELF 二进制文件，自动备份旧版为 `.bak` 并支持一键回滚。
+- **完整配置管理**：图形化配置所有常用 `beszel-agent` 环境变量（`KEY`、`HUB_URL`、`TOKEN`、`LISTEN`、`FILESYSTEM`、`EXTRA_FILESYSTEMS`、`DOCKER_HOST`、`SMART_DEVICES` 等），并提供自定义环境变量列表以兼容未来新版本。
+- **QNAP 专属优化**：
+  - 将 `DATA_DIR` 持久化到 `<QPKG_ROOT>/data/agent-data`（避免 QNAP `/` 内存盘重启丢失指纹）。
+  - 自动探测 QNAP 存储卷（如 `/share/CACHEDEV*_DATA`）、Container Station Docker Socket (`/var/run/docker.sock`)、`hwmon` 传感器，并在 `x86_64` 包内内置静态编译的 `smartctl`（smartmontools 7.5，启动时自动维护 `/usr/local/sbin/smartctl` 软链接并注入 `PATH`；ARM 架构仍可配合 Entware `smartctl`）。
+  - 中英文双语界面切换。
+
+## 构建 QPKG
+
+前置依赖：Go 1.24+（纯 Go 跨平台打包，无需 Docker 或 Linux 环境）。
+
+```powershell
+.\scripts\build.ps1
+```
+
+构建产物输出在 `dist\` 目录（包含 `x86_64`、`arm_64`、`arm-x41` 架构包）。
+
+## 安装与测试
+
+1. **QTS 4.5 – 5.x**：在 QTS **App Center** 手动安装对应架构的 `.qpkg`（若开启了代码签名限制，需在 App Center 设置中勾选允许安装无有效数字签名的应用程序，或通过 SSH 执行 `qpkg_cli -m <file>.qpkg -A`）。
+   **QTS 6.1+**：由于新版本强制要求 QNAP 官方签名且无 `QDK` 签名区会导致 `App Center` 与 `qpkg_cli -m ... -A` 均被拦截，请通过 SSH 以 root 直接执行安装：
+   ```sh
+   sudo sh BeszelAgent_1.0.0_x86_64.qpkg
+   ```
+2. 在 QTS 桌面点击 **Beszel Agent** 图标打开管理界面。
+3. 在 **二进制与更新** 页在线下载最新版或手动上传 `beszel-agent` 二进制。
+4. 在 **配置信息** 页填写 `KEY`（或 `HUB_URL` + `TOKEN`）及可选存储卷 `FILESYSTEM`（如需采集 SATA 硬盘 SMART，建议设置 `SMART_DEVICES` 如 `/dev/sda:sat,/dev/sdb:sat,/dev/nvme0`），点击 **保存并重启 Agent**。
