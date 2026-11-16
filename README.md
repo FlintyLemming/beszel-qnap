@@ -2,6 +2,8 @@
 
 一个与具体 Beszel 版本解耦的 QNAP QTS 运行环境与 Web 管理套件，参考上游 [`henrygd/beszel`](https://github.com/henrygd/beszel)。
 
+<img width="1972" height="1168" alt="图片" src="https://github.com/user-attachments/assets/98854211-5738-4e03-9ae6-2f8b73e57823" />
+
 ## 特性
 
 - **不绑定 Beszel 版本**：QPKG 仅提供运行环境、进程生命周期管理与 Web 管理界面，不内置硬编码版本的 `beszel-agent`。
