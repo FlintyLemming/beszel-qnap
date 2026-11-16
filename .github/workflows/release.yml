@@ -1,0 +1,84 @@
+name: Release QPKG
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Override QPKG_VER (optional, defaults to qpkg/qpkg.cfg)'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Resolve package version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "push" ] && [ "${{ github.ref_type }}" = "tag" ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          elif [ -n "${{ inputs.version }}" ]; then
+            VERSION="${{ inputs.version }}"
+            VERSION="${VERSION#v}"
+          else
+            VERSION=$(grep -E '^QPKG_VER=' qpkg/qpkg.cfg | head -n1 | cut -d= -f2- | tr -d "\"'")
+          fi
+
+          if [ -z "$VERSION" ]; then
+            echo "Failed to resolve version" >&2
+            exit 1
+          fi
+
+          sed -i "s|^QPKG_VER=.*|QPKG_VER=\"${VERSION}\"|" qpkg/qpkg.cfg
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          echo "Resolved QPKG_VER=${VERSION}"
+
+      - name: Build and pack QPKG packages
+        run: bash ./scripts/build.sh
+
+      - name: Generate SHA256 checksums
+        working-directory: dist
+        run: sha256sum *.qpkg > SHA256SUMS.txt
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: beszel-qnap-qpkg-${{ steps.version.outputs.version }}
+          path: |
+            dist/*.qpkg
+            dist/SHA256SUMS.txt
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          PRERELEASE_FLAG=""
+          if [[ "$TAG" == *-* ]]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/*.qpkg dist/SHA256SUMS.txt --clobber
+          else
+            gh release create "$TAG" dist/*.qpkg dist/SHA256SUMS.txt \
+              --title "$TAG" \
+              --generate-notes \
+              $PRERELEASE_FLAG
+          fi
